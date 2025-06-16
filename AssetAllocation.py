@@ -82,7 +82,7 @@ if st.button("🚀 Lancer le backtest"):
 
     if valid:
         selected_assets = list(set([row[0] for row in alloc_table]))
-        data_raw = yf.download([tickers[a] for a in selected_assets], start="2015-01-01")
+        data_raw = yf.download([tickers[a] for a in selected_assets], start="1990-01-01")
 
         if "Adj Close" in data_raw:
             data_prices = data_raw["Adj Close"].copy()
