@@ -367,7 +367,7 @@ html = f"""
 
   const m = DATA.meta || {{}};
   document.getElementById('meta').innerHTML =
-    `Fenêtre corr: ${{m.start_corr}} → ${{m.end_corr}} · Fenêtre perf: ${{m.start_perf6m}} → ${{m.end_perf6m}};
+    `Fenêtre corr: ${{m.start_corr}} → ${{m.end_corr}} · Fenêtre perf: ${{m.start_perf6m}} → ${{m.end_perf6m}} · N=${{m.n_nodes}} · L=${{m.n_links}}`;
 
   renderForceGraph(stage, DATA);
 </script>
