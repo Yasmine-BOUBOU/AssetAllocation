@@ -60,7 +60,7 @@ sector_legend = {s: i for i, s in enumerate(sorted(set(asset_sector.values())))}
 # Téléchargement unique des données
 # ===============================
 if "data_prices" not in st.session_state:
-    data_raw = yf.download(list(tickers.values()), start="1990-01-01", progress=False)
+    data_raw = yf.download(list(tickers.values()), start="1990-01-01", progress=False).dropna()
 
     # Gestion robuste Adj Close / Close
     if isinstance(data_raw.columns, pd.MultiIndex):
