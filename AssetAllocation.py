@@ -157,9 +157,8 @@ if delta_years >= 2:
 # Visualisation corrélations (D3)
 # ===============================
 st.subheader("Réseau de corrélations (force-directed)")
-colA, colB, colC = st.columns(3)
-with colA:
-    use_abs = st.toggle("Corrélation absolue", value=True, help="Si activé : |corr|. Sinon : corr signé.")
+colB, colC = st.columns(2)
+
 with colB:
     corr_threshold = st.slider("Seuil de corrélation", 0.0, 1.0, 0.35, 0.05)
 with colC:
@@ -204,7 +203,7 @@ for i in range(len(present_tickers)):
         c = corr_mat.loc[a, b] if (a in corr_mat.index and b in corr_mat.columns) else np.nan
         if pd.isna(c):
             continue
-        strength = abs(c) if use_abs else c
+        strength = abs(c)
         if strength >= corr_threshold:
             value = float(5 * (1 - (c + 1) / 2))
             value = max(0.0, min(5.0, value))
@@ -281,8 +280,8 @@ html = f"""
     const nodes = data.nodes.map(d => ({{ ...d }}));
     const links = data.links.map(d => ({{ ...d }}));
 
-    const K_LINK_BASE = 40;
-    const K_LINK_MULT = 12;
+    const K_LINK_BASE = 100;
+    const K_LINK_MULT = 50;
     const CHARGE = -220;
     const COLLIDE_PAD = 6;
 
@@ -368,7 +367,7 @@ html = f"""
 
   const m = DATA.meta || {{}};
   document.getElementById('meta').innerHTML =
-    `Fenêtre corr: ${{m.start_corr}} → ${{m.end_corr}} · Fenêtre perf: ${{m.start_perf6m}} → ${{m.end_perf6m}} · N=${{m.n_nodes}} · L=${{m.n_links}}`;
+    `Fenêtre corr: ${{m.start_corr}} → ${{m.end_corr}} · Fenêtre perf: ${{m.start_perf6m}} → ${{m.end_perf6m}};
 
   renderForceGraph(stage, DATA);
 </script>
