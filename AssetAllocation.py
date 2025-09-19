@@ -40,8 +40,6 @@ tickers = {
     "Monétaire Global (IGOV)": "IGOV"  # 2009
 }
 
-sector_legend = {s: i for i, s in enumerate(sorted(set(tickers.keys())))}
-
 # ===============================
 # Téléchargement unique des données
 # ===============================
@@ -169,14 +167,9 @@ with colC:
 
 # Préparation des données corrélation
 ret = data_filtered.pct_change()
-# Corrélation pairwise (pandas gère les NaN par paire), exiger un minimum d'observations pour éviter le bruit
 corr_mat = ret.corr(min_periods=60)
 
-# Construire nodes + links
-nodes = []
-links = []
-
-# mapping ticker -> asset name
+nodes, links = [], []
 ticker_to_asset = {v: k for k, v in tickers.items()}
 
 # nodes
@@ -187,24 +180,18 @@ for tkr in data_filtered.columns:
     if series.empty:
         continue
 
-    # perf 6m (ou lookback choisi) calculée sur les points disponibles
     lb = min(perf_lookback_days, len(series) - 1) if len(series) > 1 else 1
     perf6m = (series.iloc[-1] / series.iloc[-lb] - 1) if lb > 0 else np.nan
 
     asset_name = ticker_to_asset[tkr]
-    sector_name = asset_sector.get(asset_name, "Other")
-    group_id = sector_legend.get(sector_name, 0)
 
-    # rayon basé sur la vol annualisée (borne 6..18)
     r_series = ret[tkr].dropna()
     vol_ann = r_series.std() * np.sqrt(252) if not r_series.empty else 0.0
     radius = float(np.clip(6 + (vol_ann * 80), 6, 18))
 
     nodes.append({
         "id": tkr,
-        "name": asset_name,
-        "sector": sector_name,
-        "group": int(group_id),
+        "name": asset_name,  # afficher nom complet
         "perf6m": float(perf6m) if np.isfinite(perf6m) else 0.0,
         "radius": radius
     })
@@ -219,7 +206,6 @@ for i in range(len(present_tickers)):
             continue
         strength = abs(c) if use_abs else c
         if strength >= corr_threshold:
-            # map corr [-1,1] -> value [0..5] (0 = très proche, 5 = très éloigné)
             value = float(5 * (1 - (c + 1) / 2))
             value = max(0.0, min(5.0, value))
             links.append({"source": a, "target": b, "value": value})
@@ -236,11 +222,10 @@ meta = {
 graph_payload = {
     "nodes": nodes,
     "links": links,
-    "sectorLegend": sector_legend,
     "meta": meta
 }
 
-# HTML + JS inline (adaptation de tes scripts .js pour Streamlit)
+# HTML + JS inline
 html = f"""
 <div id="corr-app" style="width:100%;">
   <div id="toolbar" style="margin:8px 0; display:flex; gap:8px; align-items:center;">
@@ -260,25 +245,6 @@ html = f"""
     font-size: 12px;
     line-height: 1.2;
   }}
-  #stage .legend {{
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    font-family: ui-sans-serif, system-ui;
-    font-size: 13px;
-    margin: 8px 0 12px;
-  }}
-  .legend-item {{
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }}
-  .legend-swatch {{
-    width: 12px;
-    height: 12px;
-    border-radius: 3px;
-    display: inline-block;
-  }}
   .node-label {{
     font: 11px ui-sans-serif, system-ui;
     fill: #333;
@@ -293,7 +259,6 @@ html = f"""
   const WIDTH = document.getElementById('stage').clientWidth || 1100;
   const HEIGHT = 720;
 
-  const app = document.getElementById('corr-app');
   const stage = document.getElementById('stage');
   const meta = document.getElementById('meta');
 
@@ -301,7 +266,6 @@ html = f"""
     container.innerHTML = '';
 
     const color = d3.scaleOrdinal(d3.schemeCategory10);
-    const sectorToGroup = data.sectorLegend || {{}};
 
     const svg = d3.select(container)
       .append('svg')
@@ -313,21 +277,6 @@ html = f"""
       .append('div')
       .attr('class', 'tooltip')
       .style('opacity', 0);
-
-    const legendContainer = d3.select(container)
-      .append('div')
-      .attr('class', 'legend');
-
-    const sectors = Object.entries(sectorToGroup)
-      .sort((a,b) => a[1]-b[1])
-      .map(([sector, group]) => ({{ sector, group }}));
-
-    legendContainer.selectAll('.legend-item')
-      .data(sectors)
-      .enter()
-      .append('div')
-      .attr('class', 'legend-item')
-      .html(d => `<span class="legend-swatch" style="background:${{color(d.group)}}"></span>${{d.sector}}`);
 
     const nodes = data.nodes.map(d => ({{ ...d }}));
     const links = data.links.map(d => ({{ ...d }}));
@@ -363,7 +312,7 @@ html = f"""
       .data(nodes)
       .join('circle')
       .attr('r', d => d.radius || 6)
-      .attr('fill', d => color(d.group))
+      .attr('fill', d => color(d.id))  // couleur par ticker
       .call(d3.drag()
         .on('start', dragstarted)
         .on('drag', dragged)
@@ -372,7 +321,7 @@ html = f"""
         tooltip.style('opacity', 1)
           .style('left', `${{event.clientX + 10}}px`)
           .style('top', `${{event.clientY + 10}}px`)
-          .html(`<b>${{d.id}}</b> — ${{d.name}}<br/>${{d.sector}}<br/>Perf 6m: ${{(d.perf6m*100).toFixed(2)}}%`);
+          .html(`<b>${{d.name}}</b><br/>Perf 6m: ${{(d.perf6m*100).toFixed(2)}}%`);
       }})
       .on('mouseout', () => tooltip.style('opacity', 0));
 
@@ -381,7 +330,7 @@ html = f"""
       .data(nodes)
       .join('text')
       .attr('class', 'node-label')
-      .text(d => `${{d.id}}  ${{(d.perf6m*100).toFixed(1)}}%`)
+      .text(d => `${{d.name}}  ${{(d.perf6m*100).toFixed(1)}}%`)
       .attr('text-anchor', 'middle')
       .attr('dy', d => - (d.radius + 4));
 
@@ -415,11 +364,8 @@ html = f"""
       event.subject.fx = null;
       event.subject.fy = null;
     }}
-
-    return {{ svg, simulation }};
   }}
 
-  // Affichage des méta-infos
   const m = DATA.meta || {{}};
   document.getElementById('meta').innerHTML =
     `Fenêtre corr: ${{m.start_corr}} → ${{m.end_corr}} · Fenêtre perf: ${{m.start_perf6m}} → ${{m.end_perf6m}} · N=${{m.n_nodes}} · L=${{m.n_links}}`;
@@ -429,6 +375,7 @@ html = f"""
 """
 
 components.html(html, height=820, scrolling=True)
+
 
 # ===============================
 # --- Simulation de portefeuilles (inchangée) ---
