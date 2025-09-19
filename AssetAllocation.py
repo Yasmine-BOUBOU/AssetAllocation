@@ -40,21 +40,7 @@ tickers = {
     "Monétaire Global (IGOV)": "IGOV"  # 2009
 }
 
-# Catégories pour la légende (groupes couleurs)
-asset_sector = {
-    "Actions mondiales (VT)": "Equities",
-    "Immobilier international ex US (IFGL)": "Real Estate",
-    "Immobilier US (IYR)": "Real Estate",
-    "Obligations d'entreprises Global (CORP.L)": "Corporate Bonds",
-    "Obligations gouvernementales Global (IGLO.L)": "Government Bonds",
-    "Bitcoin": "Crypto",
-    "Or (GLD)": "Commodities (Precious)",
-    "Métaux industriels (DBB)": "Commodities (Industrial)",
-    "Matières agricoles (DBA)": "Commodities (Agriculture)",
-    "Private Equity Global (PSP)": "Private Equity",
-    "Monétaire Global (IGOV)": "Cash/Monetary"
-}
-sector_legend = {s: i for i, s in enumerate(sorted(set(asset_sector.values())))}
+sector_legend = {s: i for i, s in enumerate(sorted(set(tickers.keys())))}
 
 # ===============================
 # Téléchargement unique des données
