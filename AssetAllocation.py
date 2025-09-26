@@ -10,6 +10,8 @@ from datetime import datetime
 
 st.set_page_config(page_title="Backtest Multi-Portefeuilles", layout="wide")
 
+st.image("logo_zb.png", width=200)
+
 # ===============================
 # Définition actifs
 # ===============================

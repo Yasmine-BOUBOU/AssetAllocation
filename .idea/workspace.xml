@@ -4,12 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="0dc20c8e-2ba2-4be9-b06d-575d28c3dd3c" name="Changes" comment="Add features">
-      <change afterPath="$PROJECT_DIR$/AssetAllocationV2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/AssetAllocation.py" beforeDir="false" afterPath="$PROJECT_DIR$/AssetAllocation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-    </list>
+    <list default="true" id="0dc20c8e-2ba2-4be9-b06d-575d28c3dd3c" name="Changes" comment="V2" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -81,7 +76,7 @@
       <workItem from="1750662342983" duration="24000" />
       <workItem from="1758275030632" duration="10605000" />
       <workItem from="1758616550602" duration="5941000" />
-      <workItem from="1758880364465" duration="5619000" />
+      <workItem from="1758880364465" duration="5991000" />
     </task>
     <task id="LOCAL-00001" summary="test">
       <option name="closed" value="true" />
@@ -171,7 +166,23 @@
       <option name="project" value="LOCAL" />
       <updated>1758296230738</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="Add features">
+      <option name="closed" value="true" />
+      <created>1758889242061</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1758889242061</updated>
+    </task>
+    <task id="LOCAL-00013" summary="V2">
+      <option name="closed" value="true" />
+      <created>1758889284138</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1758889284138</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -182,6 +193,7 @@
     <MESSAGE value="update" />
     <MESSAGE value="requirements" />
     <MESSAGE value="Add features" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add features" />
+    <MESSAGE value="V2" />
+    <option name="LAST_COMMIT_MESSAGE" value="V2" />
   </component>
 </project>
