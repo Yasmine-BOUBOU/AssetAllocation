@@ -537,6 +537,7 @@ if st.button("🚀 Lancer le backtest"):
                 "Sortino Ratio": "{:.2f}"
             }), use_container_width=True)
 
+
             # ===== Téléchargement CSV =====
             st.download_button(
                 label="📥 Télécharger les résultats (CSV)",
