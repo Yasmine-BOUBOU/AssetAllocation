@@ -70,9 +70,10 @@ for asset in assets:
     c1.write(asset)
     c2.write(inception_years_hint.get(tkr, "n/a"))
     checked = c3.checkbox(
-        "",
+        f"Télécharger {asset}",
         value=(tkr in default_checked),
-        key=f"chk_{tkr}"
+        key=f"chk_{tkr}",
+        label_visibility="collapsed"
     )
     if checked:
         selected_assets.append(asset)
@@ -87,7 +88,7 @@ sel_tickers = [tickers[a] for a in selected_assets]
 # Téléchargement des données (cache par univers sélectionné)
 # ===============================
 if "data_prices" not in st.session_state or st.session_state.get("cached_sel") != tuple(sel_tickers):
-    data_raw = yf.download(sel_tickers, start="1990-01-01", progress=False).dropna(how="all")
+    data_raw = yf.download(sel_tickers, start="1990-01-01", auto_adjust=False, progress=False).dropna()
     if isinstance(data_raw.columns, pd.MultiIndex):
         tops = {lvl[0] for lvl in data_raw.columns}
         if "Adj Close" in tops:
@@ -161,12 +162,79 @@ fig_perf.update_layout(
 st.plotly_chart(fig_perf, use_container_width=True)
 
 # ===============================
+# Statistiques par classe d'actifs
+# ===============================
+st.subheader("Statistiques par classe d'actifs")
+
+asset_stats_rows = []
+asset_index = []
+# rendements log pour stats
+asset_logret = np.log(data_filtered).diff().dropna()
+
+for asset in selected_assets:
+    tkr = tickers[asset]
+    s = data_filtered[tkr].dropna()
+    if len(s) < 2:
+        continue
+
+    # CAGR sur la période visible
+    years = (s.index[-1] - s.index[0]).days / 365.2425
+    cagr = (s.iloc[-1] / s.iloc[0]) ** (1 / years) - 1 if years > 0 else np.nan
+
+    # Annualized avg return (depuis log-returns → retour simple annualisé)
+    r = asset_logret[tkr].dropna() if tkr in asset_logret else pd.Series(dtype=float)
+    ann_avg = np.expm1(r.mean() * 252) if not r.empty else np.nan  # = e^{mu*252}-1
+
+    # Vol annualisée
+    vol_annual = r.std() * np.sqrt(252) if not r.empty else np.nan
+
+    # Best/Worst year (rendements simples par année)
+    yearly = s.resample('YE').last().pct_change().dropna()
+    best_year = yearly.max() if not yearly.empty else np.nan
+    worst_year = yearly.min() if not yearly.empty else np.nan
+
+    # Max Drawdown sur le prix
+    hwm = s.cummax()
+    dd = s / hwm - 1.0
+    max_dd = dd.min()
+
+    # Sharpe (rf=0)
+    sharpe = (r.mean() / r.std()) * np.sqrt(252) if (not r.empty and r.std() > 0) else np.nan
+
+    asset_index.append(asset)
+    asset_stats_rows.append([cagr, ann_avg, vol_annual, best_year, worst_year, max_dd, sharpe])
+
+if asset_stats_rows:
+    asset_stats_df = pd.DataFrame(
+        asset_stats_rows,
+        index=asset_index,
+        columns=[
+            "CAGR", "Annualized avg return", "Volatility",
+            "Best Year", "Worst Year", "Max Drawdown", "Sharpe Ratio"
+        ]
+    )
+    st.dataframe(
+        asset_stats_df.style.format({
+            "CAGR": "{:.2%}",
+            "Annualized avg return": "{:.2%}",
+            "Volatility": "{:.2%}",
+            "Best Year": "{:.2%}",
+            "Worst Year": "{:.2%}",
+            "Max Drawdown": "{:.2%}",
+            "Sharpe Ratio": "{:.2f}",
+        }),
+        use_container_width=True
+    )
+else:
+    st.info("Pas assez de données pour les statistiques par classe d'actifs.")
+
+# ===============================
 # Corrélations (matrice interactive + graph D3 sans perf)
 # ===============================
 st.subheader("Corrélations")
 
 # Matrice de corrélation interactive (compacte)
-returns = data_filtered.pct_change().dropna(how="all").dropna(axis=1, how="any")
+returns = data_filtered.pct_change().dropna()
 if returns.empty or returns.shape[1] < 2:
     st.warning("Pas assez de données pour calculer des corrélations.")
     corr_mat = pd.DataFrame()
@@ -360,73 +428,153 @@ for j, pname in enumerate(st.session_state.portfolios):
     tab_cols[j + 1].markdown(f"**{pname} (%)**")
 
 alloc_table = []
+used_assets = set()
+
 for i in range(st.session_state.table_rows):
-    row = []
-    asset_select = tab_cols[0].selectbox(f"Actif {i}", selected_assets, key=f"asset_{i}")
-    row.append(asset_select)
+    available_assets = [a for a in selected_assets if a not in used_assets]
+    # On ajoute une "sentinelle" si plus d’option disponible
+    if not available_assets:
+        available_assets = ["No Option to select"]
+
+    asset_select = tab_cols[0].selectbox(
+        f"Actif {i}",
+        options=available_assets,
+        index=0,
+        key=f"asset_{i}"
+    )
+
+    if asset_select != "No Option to select":
+        used_assets.add(asset_select)
+
+    row = [asset_select]
     for j in range(len(st.session_state.portfolios)):
         w = tab_cols[j + 1].number_input(
             f"{st.session_state.portfolios[j]} alloc {i}",
-            min_value=0, max_value=100, value=0, key=f"alloc_{i}_{j}"
+            min_value=0, max_value=100, value=0,
+            step=5,
+            key=f"alloc_{i}_{j}",
+            disabled=(asset_select == "No Option to select")  # 🔒 poids bloqués
         )
         row.append(w)
     alloc_table.append(row)
 
-# Paramètres de backtest
-st.subheader("Paramètres de backtest")
-pb1, pb2, pb3 = st.columns(3)
-strategy = pb1.selectbox("Stratégie", ["Buy & Hold", "Rebalancing (N jours)"], index=0)
-reb_days = None
-if strategy.startswith("Rebalancing"):
-    reb_days = int(pb2.number_input("Intervalle N (jours)", value=63, min_value=2, max_value=252, step=1))
-costs_bps = float(pb3.number_input("Frais de réallocation (bps)", value=0, min_value=0, max_value=200, step=1))
+# ===============================
+# Paramètres par portefeuille
+# ===============================
+st.subheader("Paramètres par portefeuille")
 
-# Fonction de backtest
-def backtest_with_rebalance(prices: pd.DataFrame,
-                            weights_pct: dict,
-                            start_capital: float,
-                            reb_days: int | None = None,
-                            costs_bps: float = 0.0) -> pd.Series:
+# helper fréquence → jours
+def freq_to_days(label: str) -> int | None:
+    if label == "Mensuel (30 j)":
+        return 30
+    if label == "Hebdomadaire (7 j)":
+        return 7
+    if label == "Trimestriel (90 j)":
+        return 90
+    return None
+
+# Pour chaque portefeuille, on choisit la stratégie et ses paramètres
+port_configs = []
+for j, pname in enumerate(st.session_state.portfolios):
+    with st.expander(f"⚙️ Paramètres – {pname}", expanded=(len(st.session_state.portfolios) == 1)):
+        cc1, cc2, cc3 = st.columns(3)
+
+        strategy_j = cc1.selectbox(
+            "Stratégie",
+            ["Buy & Hold", "Rebalancing (N jours)", "DCA (apport périodique)"],
+            index=0,
+            key=f"strategy_{j}"
+        )
+
+        # Paramètres par stratégie
+        reb_days_j = None
+        dca_amount_j = 0.0
+        dca_days_j = None
+
+        if strategy_j == "Rebalancing (N jours)":
+            reb_days_j = int(cc2.number_input("Intervalle N (jours)", value=60, min_value=2, max_value=365, step=1, key=f"reb_{j}"))
+        elif strategy_j == "DCA (apport périodique)":
+            dca_amount_j = float(cc2.number_input("Montant DCA (€)", value=500.0, step=100.0, min_value=0.0, key=f"dca_amt_{j}"))
+            freq_label = cc3.selectbox("Fréquence", ["Mensuel (30 j)", "Hebdomadaire (7 j)", "Trimestriel (90 j)", "Chaque N jours"], index=0, key=f"dca_freq_{j}")
+            dca_days_j = freq_to_days(freq_label)
+            if dca_days_j is None:  # "Chaque N jours"
+                dca_days_j = int(st.number_input("N jours", value=30, min_value=2, max_value=365, step=1, key=f"dca_n_{j}"))
+
+        # Frais par portefeuille (si tu veux les garder globaux, mets-le ailleurs)
+        costs_bps_j = float(st.number_input("Frais de réallocation (bps)", value=0, min_value=0, max_value=200, step=1, key=f"costs_{j}"))
+
+        port_configs.append({
+            "strategy": strategy_j,
+            "reb_days": reb_days_j,
+            "dca_amount": dca_amount_j,
+            "dca_days": dca_days_j,
+            "costs_bps": costs_bps_j,
+        })
+
+# Fonction de backtest. Attention ici, pour faciliter les calculs, on va faire comme si on pouvait acheter des fractions d'actions... Grosse simplification.
+# On fait ça pour pas que la perf soit dépendante du capital initial dans le portefeuille.
+def backtest_with_rebalance_or_dca(
+    prices: pd.DataFrame,
+    weights_pct: dict,
+    start_capital: float,
+    reb_days: int | None = None,
+    costs_bps: float = 0.0,
+    dca_amount: float = 0.0,
+    dca_days: int | None = None
+) -> tuple[pd.Series, pd.Series]:
     cols = list(weights_pct.keys())
-    prices = prices[cols].copy()
-    rets = prices.pct_change().fillna(0.0)
+    prices = prices[cols].dropna().copy()
     w = (pd.Series(weights_pct, dtype=float) / 100.0).reindex(cols).fillna(0.0)
 
     dates = prices.index
     holdings = (start_capital * w) / prices.iloc[0]
     port_val = pd.Series(index=dates, dtype=float)
+    flows = pd.Series(0.0, index=dates)
+
     port_val.iloc[0] = float((holdings * prices.iloc[0]).sum())
 
-    last_reb = dates[0]
+    # Choix de la cadence d’événement
+    event_days = None
+    if dca_amount > 0 and dca_days is not None:
+        event_days = dca_days
+    elif reb_days is not None:
+        event_days = reb_days
+
+    last_event = dates[0]
+
     for t in range(1, len(dates)):
-        # évolution naturelle
-        holdings *= (1.0 + rets.iloc[t])
         pv = float((holdings * prices.iloc[t]).sum())
+        event_due = (event_days is not None) and ((dates[t] - last_event).days >= event_days)
 
-        # rebalancement si demandé
-        if reb_days and (dates[t] - last_reb).days >= reb_days:
+        if event_due:
+            # DCA éventuel : on ajoute le cash à la valeur
+            if dca_amount > 0:
+                pv += dca_amount
+                flows.iloc[t] += dca_amount  # flux externe
+
+            # Rebalance systématique à l’événement (même en DCA)
             target_val = pv * w
-            target_hold = target_val / prices.iloc[t]
-            trade = target_hold - holdings
+            current_val = holdings * prices.iloc[t]
+            trade_val = target_val - current_val
+
             if costs_bps > 0:
-                trade_cash = (trade.abs() * prices.iloc[t]).sum()
-                cost = trade_cash * (costs_bps / 10_000.0)
-                pv -= cost
-                target_val = pv * w
-                target_hold = target_val / prices.iloc[t]
-                trade = target_hold - holdings
-            holdings += trade
-            last_reb = dates[t]
+                cost = trade_val.abs().sum() * (costs_bps / 10_000.0)
+                pv_after_cost = pv - cost
+                target_val = pv_after_cost * w
 
-        port_val.iloc[t] = float((holdings * prices.iloc[t]).sum())
+            holdings = target_val / prices.iloc[t]
+            last_event = dates[t]
+            pv = float((holdings * prices.iloc[t]).sum())
 
-    return port_val
+        port_val.iloc[t] = pv
+
+    return port_val, flows
 
 # ===============================
 # Lancer backtest
 # ===============================
 if st.button("🚀 Lancer le backtest"):
-    # Vérif totaux = 100%
+    # Vérif totaux = 100% par portefeuille
     valid = True
     for j in range(len(st.session_state.portfolios)):
         total = sum([row[j + 1] for row in alloc_table])
@@ -435,32 +583,35 @@ if st.button("🚀 Lancer le backtest"):
             valid = False
 
     if valid:
-        # Sous-ensemble propre (intersection des séries)
         use_cols = [tickers[a] for a in selected_assets]
         data_subset = data_filtered[use_cols].dropna()
-
         if data_subset.empty:
             st.warning("Pas assez de données sur la période sélectionnée pour exécuter le backtest.")
             st.stop()
 
         capital_data = pd.DataFrame(index=data_subset.index)
+        flow_data = pd.DataFrame(0.0, index=data_subset.index, columns=st.session_state.portfolios)
 
         for j, pname in enumerate(st.session_state.portfolios):
-            weights_pct = {tickers[row[0]]: row[j + 1] for row in alloc_table if row[j + 1] > 0}
+            weights_pct = {tickers[row[0]]: row[j + 1] for row in alloc_table if (row[0] != "No Option to select" and row[j + 1] > 0)}
             if not weights_pct:
                 st.warning(f"Aucun poids non nul pour {pname}.")
                 continue
 
-            series_val = backtest_with_rebalance(
+            cfg = port_configs[j]
+            series_val, series_flow = backtest_with_rebalance_or_dca(
                 prices=data_subset,
                 weights_pct=weights_pct,
                 start_capital=start_capitals[j],
-                reb_days=None if strategy == "Buy & Hold" else reb_days,
-                costs_bps=costs_bps
+                reb_days=cfg["reb_days"],
+                costs_bps=cfg["costs_bps"],
+                dca_amount=cfg["dca_amount"],
+                dca_days=cfg["dca_days"]
             )
             capital_data[pname] = series_val
+            flow_data[pname] = series_flow
 
-        # Évolution du capital
+        # Courbe de capital
         st.subheader("Évolution du capital")
         fig_bt = go.Figure()
         for col in capital_data.columns:
@@ -473,79 +624,74 @@ if st.button("🚀 Lancer le backtest"):
         )
         st.plotly_chart(fig_bt, use_container_width=True)
 
-        # ===== Camemberts d’allocations =====
+        # ===== Camemberts d’allocations (couleurs consistantes) =====
+        from plotly.colors import qualitative
+        palette = qualitative.Plotly + qualitative.D3 + qualitative.Set3
+        labels_master = [row[0] for row in alloc_table]
+        unique_labels = [l for i,l in enumerate(labels_master) if l not in labels_master[:i]]
+        color_map = {label: palette[i % len(palette)] for i, label in enumerate(unique_labels)}
+
         st.subheader("Allocations par portefeuille")
         pie_cols = st.columns(len(st.session_state.portfolios))
         for j, pname in enumerate(st.session_state.portfolios):
             labels = [row[0] for row in alloc_table]
             values = [row[j + 1] for row in alloc_table]
-            fig_pie = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.3)])
+            colors = [color_map[l] for l in labels]
+            fig_pie = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.3, marker=dict(colors=colors))])
             fig_pie.update_layout(title_text=pname)
             pie_cols[j].plotly_chart(fig_pie, use_container_width=True)
 
-        # ===== Tableau de statistiques =====
+        # ===== Stats TWRR (neutralise les apports DCA) =====
         st.subheader("Statistiques des portefeuilles")
+
+        # Rendements journaliers TWRR
+        twrr_daily = (capital_data.diff() - flow_data).div(capital_data.shift(1))
+        twrr_daily = twrr_daily.replace([np.inf, -np.inf], np.nan).dropna()
+        twrr_wi = (1 + twrr_daily).cumprod()
+
         stats_rows = []
-        daily = capital_data.pct_change().dropna(how="all")
         for col in capital_data.columns:
-            series = capital_data[col].dropna()
-            if len(series) < 2:
+            series_cap = capital_data[col].dropna()
+            r = twrr_daily[col].dropna()
+            wi = twrr_wi[col].dropna()
+            if len(series_cap) < 2 or r.empty or wi.empty:
                 continue
-            start_balance = series.iloc[0]
-            end_balance = series.iloc[-1]
-            years = (series.index[-1] - series.index[0]).days / 365.25
-            cagr = (end_balance / start_balance) ** (1 / years) - 1 if start_balance > 0 and years > 0 else np.nan
 
-            r = daily[col].dropna()
-            vol_annual = r.std() * np.sqrt(252) if not r.empty else np.nan
+            years = (r.index[-1] - r.index[0]).days / 365.2425
+            cagr = wi.iloc[-1] ** (1 / years) - 1 if years > 0 else np.nan
 
-            yearly = series.resample('Y').last().pct_change().dropna()
+            vol_annual = r.std() * np.sqrt(252) if r.std() > 0 else np.nan
+            sharpe = (r.mean() / r.std()) * np.sqrt(252) if r.std() > 0 else np.nan
+
+            yearly = (1 + r).resample("YE").prod() - 1
             best_year = yearly.max() if not yearly.empty else np.nan
             worst_year = yearly.min() if not yearly.empty else np.nan
 
-            if not r.empty:
-                cum = (1 + r).cumprod()
-                hwm = cum.cummax()
-                drawdown = (cum / hwm) - 1
-                max_dd = drawdown.min()
-            else:
-                max_dd = np.nan
-
-            sharpe = (r.mean() / r.std()) * np.sqrt(252) if (not r.empty and r.std() > 0) else np.nan
-            downside_std = r[r < 0].std() * np.sqrt(252) if not r.empty else np.nan
-            sortino = (r.mean() / downside_std) * np.sqrt(252) if (downside_std is not None and downside_std > 0) else np.nan
+            # MDD sur WI TWRR
+            mdd = (wi / wi.cummax() - 1).min()
 
             stats_rows.append([
-                start_balance, end_balance, cagr, vol_annual,
-                best_year, worst_year, max_dd, sharpe, sortino
+                series_cap.iloc[0], series_cap.iloc[-1], cagr, vol_annual,
+                best_year, worst_year, mdd, sharpe
             ])
 
         if stats_rows:
             stats_df = pd.DataFrame(
                 stats_rows,
-                columns=["Start Balance (€)", "End Balance (€)", "CAGR", "Volatility",
-                         "Best Year", "Worst Year", "Max Drawdown", "Sharpe Ratio", "Sortino Ratio"],
+                columns=["Start Balance (€)", "End Balance (€)", "CAGR (TWRR)", "Volatility (TWRR)",
+                         "Best Year (TWRR)", "Worst Year (TWRR)", "Max Drawdown (TWRR)", "Sharpe (TWRR, Rf=0)"],
                 index=capital_data.columns
             )
             st.dataframe(stats_df.style.format({
                 "Start Balance (€)": "{:,.0f}",
                 "End Balance (€)": "{:,.0f}",
-                "CAGR": "{:.2%}",
-                "Volatility": "{:.2%}",
-                "Best Year": "{:.2%}",
-                "Worst Year": "{:.2%}",
-                "Max Drawdown": "{:.2%}",
-                "Sharpe Ratio": "{:.2f}",
-                "Sortino Ratio": "{:.2f}"
+                "CAGR (TWRR)": "{:.2%}",
+                "Volatility (TWRR)": "{:.2%}",
+                "Best Year (TWRR)": "{:.2%}",
+                "Worst Year (TWRR)": "{:.2%}",
+                "Max Drawdown (TWRR)": "{:.2%}",
+                "Sharpe (TWRR, Rf=0)": "{:.2f}",
             }), use_container_width=True)
-
-
-            # ===== Téléchargement CSV =====
-            st.download_button(
-                label="📥 Télécharger les résultats (CSV)",
-                data=capital_data.to_csv().encode("utf-8"),
-                file_name="backtest_results.csv",
-                mime="text/csv"
-            )
         else:
             st.info("Pas assez de points pour calculer les statistiques.")
+
