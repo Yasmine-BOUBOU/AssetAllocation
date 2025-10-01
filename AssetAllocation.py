@@ -10,7 +10,15 @@ from datetime import datetime
 
 st.set_page_config(page_title="Backtest Multi-Portefeuilles", layout="wide")
 
-st.image("pub_livre.png", width=1500)
+st.markdown(
+    """
+    <a href="https://www.zonebourse.com" target="_blank">
+        <img src="https://raw.githubusercontent.com/EtienneNeptune/AssetAllocation/main/pub_livre.png
+" width="200">
+    </a>
+    """,
+    unsafe_allow_html=True
+)
 
 # ===============================
 # Définition actifs

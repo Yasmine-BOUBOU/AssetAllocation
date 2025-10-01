@@ -5,8 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0dc20c8e-2ba2-4be9-b06d-575d28c3dd3c" name="Changes" comment="logo">
-      <change afterPath="$PROJECT_DIR$/prez_bourse_finance.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/pub_livre.png" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/AssetAllocation.py" beforeDir="false" afterPath="$PROJECT_DIR$/AssetAllocation.py" afterDir="false" />
     </list>
@@ -93,7 +91,8 @@
       <workItem from="1758894362694" duration="12000" />
       <workItem from="1759130674309" duration="11136000" />
       <workItem from="1759160796451" duration="17000" />
-      <workItem from="1759307004383" duration="646000" />
+      <workItem from="1759307004383" duration="742000" />
+      <workItem from="1759308664422" duration="43000" />
     </task>
     <task id="LOCAL-00001" summary="test">
       <option name="closed" value="true" />
@@ -215,7 +214,15 @@
       <option name="project" value="LOCAL" />
       <updated>1759147904960</updated>
     </task>
-    <option name="localTasksCounter" value="16" />
+    <task id="LOCAL-00016" summary="logo">
+      <option name="closed" value="true" />
+      <created>1759307705306</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1759307705306</updated>
+    </task>
+    <option name="localTasksCounter" value="17" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
