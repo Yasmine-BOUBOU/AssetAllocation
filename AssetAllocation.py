@@ -12,7 +12,7 @@ st.set_page_config(page_title="Backtest Multi-Portefeuilles", layout="wide")
 
 st.markdown(
     """
-    <a href="https://www.zonebourse.com" target="_blank">
+    <a href="https://www.zonebourse.com/wbfl/livre" target="_blank">
         <img src="https://raw.githubusercontent.com/EtienneNeptune/AssetAllocation/main/pub_livre.png
 " width="200">
     </a>
