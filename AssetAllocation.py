@@ -26,7 +26,7 @@ st.markdown(
 assets = [
     "Actions mondiales (VT)",
     "Private Equity Global (PSP)",
-    "Actions françaises (CAC.PA)",
+    "Bitcoin (BTC-USD)",
     "Actions américaines (SPY)",
     "Immobilier international ex US (IFGL)",
     "Immobilier US (IYR)",
@@ -41,7 +41,7 @@ assets = [
 tickers = {
     "Actions mondiales (VT)": "VT",        # 2008
     "Private Equity Global (PSP)": "PSP",  # 2008
-    "Actions françaises (CAC.PA)": "CAC.PA",  # 2008
+    "Bitcoin (Attention, ce n'est pas un ETF)": "BTC-USD",  # 2008
     "Actions américaines (SPY)": "SPY",    # 1993
     "Immobilier international ex US (IFGL)": "IFGL",  # 2008
     "Immobilier US (IYR)": "IYR",          # 2000
@@ -55,7 +55,7 @@ tickers = {
 
 # Pour l’affichage initial du tableau de sélection
 inception_years_hint = {
-    "VT": 2008, "PSP": 2008, "CAC.PA": 2008, "SPY": 1993,
+    "VT": 2008, "PSP": 2008, "BTC-USD": 2014, "SPY": 1993,
     "IFGL": 2008, "IYR": 2000, "LQD": 2002, "IGLO.L": 2009,
     "GLD": 2004, "DBB": 2007, "DBA": 2007, "IGOV": 2009
 }
@@ -65,7 +65,7 @@ inception_years_hint = {
 # ===============================
 st.title("Je sélectionne les ETFs que je souhaite analyser / backtester")
 
-default_checked = {"VT", "LQD", "GLD"}
+default_checked = {"VT", "PSP", "IYR", "LQD", "GLD"}
 
 
 hdr = st.columns([3, 1, 1])
