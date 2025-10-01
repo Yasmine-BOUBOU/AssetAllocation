@@ -10,7 +10,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="Backtest Multi-Portefeuilles", layout="wide")
 
-st.image("logo_zb.png", width=200)
+st.image("pub_livre.png", width=1500)
 
 # ===============================
 # Définition actifs
