@@ -14,7 +14,7 @@ st.markdown(
     """
     <a href="https://www.zonebourse.com/wbfl/livre" target="_blank">
         <img src="https://raw.githubusercontent.com/EtienneNeptune/AssetAllocation/master/pub_livre.png
-" width="500">
+" width="1500">
     </a>
     """,
     unsafe_allow_html=True
