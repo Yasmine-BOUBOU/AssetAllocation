@@ -63,14 +63,17 @@ inception_years_hint = {
 # ===============================
 # Sélection des actifs (tableau avec cases à cocher)
 # ===============================
-st.title("Sélection des actifs")
-
-hdr = st.columns([3, 1, 1])
-hdr[0].markdown("**Actif**")
-hdr[1].markdown("**Début (indicatif)**")
-hdr[2].markdown("**Télécharger ?**")
+st.title("Je sélectionne les ETFs que je souhaite analyser / backtester")
 
 default_checked = {"VT", "LQD", "GLD"}
+
+
+hdr = st.columns([3, 1, 1])
+hdr[0].markdown("**Les différentes classes d'actifs (un ETF/ETP pour chaque classe)**")
+hdr[1].markdown("**Année de lancement de l'ETF/ETP**")
+hdr[2].markdown("**Télécharger ?**")
+
+
 selected_assets = []
 for asset in assets:
     tkr = tickers[asset]
@@ -134,7 +137,7 @@ max_date = data_prices.index.max().date()
 # Sélection de période utilisateur
 # ===============================
 date_range = st.date_input(
-    "Sélectionnez une période",
+    "**Je selectionne ma période d'analyse (par défaut, la date de début = premier jour de cotation en commun dans l'ensemble des ETFs séléctionnés)**",
     value=[common_start, max_date],
     min_value=common_start,
     max_value=max_date
@@ -145,7 +148,7 @@ data_filtered = data_prices.loc[str(start_date):str(end_date)].copy()
 # ===============================
 # Graphique global (rebasing)
 # ===============================
-st.subheader("Évolution des performances des classes d'actifs")
+st.subheader("Évolution des performances des ETFs / Classes d'actifs")
 
 def rebase_series_to_first_valid(s: pd.Series) -> pd.Series:
     s = s.dropna()
@@ -217,19 +220,19 @@ if asset_stats_rows:
         asset_stats_rows,
         index=asset_index,
         columns=[
-            "CAGR", "Annualized avg return", "Volatility",
-            "Best Year", "Worst Year", "Max Drawdown", "Sharpe Ratio"
+            "CAGR (Rendement moyen annuel composé)", "Rendement moyen annualisé", "Volatilité",
+            "Meilleure année", "Pire année", "Chute la plus importante", "Ratio de Sharpe"
         ]
     )
     st.dataframe(
         asset_stats_df.style.format({
-            "CAGR": "{:.2%}",
-            "Annualized avg return": "{:.2%}",
-            "Volatility": "{:.2%}",
-            "Best Year": "{:.2%}",
-            "Worst Year": "{:.2%}",
-            "Max Drawdown": "{:.2%}",
-            "Sharpe Ratio": "{:.2f}",
+            "CAGR (Rendement moyen annuel composé)": "{:.2%}",
+            "Rendement moyen annualisé": "{:.2%}",
+            "Volatilité": "{:.2%}",
+            "Meilleure année": "{:.2%}",
+            "Pire année": "{:.2%}",
+            "Chute la plus importante": "{:.2%}",
+            "Ratio de Sharpe": "{:.2f}",
         }),
         use_container_width=True
     )
@@ -239,7 +242,7 @@ else:
 # ===============================
 # Corrélations (matrice interactive + graph D3 sans perf)
 # ===============================
-st.subheader("Corrélations")
+st.subheader("Corrélations - Cherchez les classes d'actifs suceptibles de baisser la volatilité et augmenter votre CAGR !")
 
 # Matrice de corrélation interactive (compacte)
 returns = data_filtered.pct_change().dropna()
@@ -270,7 +273,7 @@ if not corr_mat.empty:
     fig_corr.update_xaxes(tickangle=45)
     st.plotly_chart(fig_corr, use_container_width=True)
 
-    st.markdown("**Réseau de corrélations (force-directed)**")
+    st.markdown("**Réseau de corrélation (une invention Zonebourse). Jouez avec le seuil pour faire apparaître / disparaître des liens !**")
     corr_threshold = st.slider("Seuil de corrélation (|ρ| ≥ seuil)", 0.0, 1.0, 0.35, 0.05)
 
     # Préparer nodes / links (sans performance)
@@ -431,7 +434,7 @@ for i in range(len(st.session_state.portfolios)):
 # Tableau d'allocations
 st.subheader("Tableau d'allocations")
 tab_cols = st.columns(len(st.session_state.portfolios) + 1)
-tab_cols[0].markdown("**Actif**")
+tab_cols[0].markdown("**Classes d'actifs**")
 for j, pname in enumerate(st.session_state.portfolios):
     tab_cols[j + 1].markdown(f"**{pname} (%)**")
 
@@ -469,7 +472,7 @@ for i in range(st.session_state.table_rows):
 # ===============================
 # Paramètres par portefeuille
 # ===============================
-st.subheader("Paramètres par portefeuille")
+st.subheader("Stratégie d'investissement des portefeuilles")
 
 # helper fréquence → jours
 def freq_to_days(label: str) -> int | None:
@@ -509,7 +512,7 @@ for j, pname in enumerate(st.session_state.portfolios):
                 dca_days_j = int(st.number_input("N jours", value=30, min_value=2, max_value=365, step=1, key=f"dca_n_{j}"))
 
         # Frais par portefeuille (si tu veux les garder globaux, mets-le ailleurs)
-        costs_bps_j = float(st.number_input("Frais de réallocation (bps)", value=0, min_value=0, max_value=200, step=1, key=f"costs_{j}"))
+        costs_bps_j = float(st.number_input("Frais de courtage (bps)", value=0, min_value=0, max_value=200, step=1, key=f"costs_{j}"))
 
         port_configs.append({
             "strategy": strategy_j,
@@ -686,18 +689,18 @@ if st.button("🚀 Lancer le backtest"):
         if stats_rows:
             stats_df = pd.DataFrame(
                 stats_rows,
-                columns=["Start Balance (€)", "End Balance (€)", "CAGR (TWRR)", "Volatility (TWRR)",
-                         "Best Year (TWRR)", "Worst Year (TWRR)", "Max Drawdown (TWRR)", "Sharpe (TWRR, Rf=0)"],
+                columns=["Capital de départ (€)", "Capital de fin (€)", "CAGR (TWRR)", "Volatilité (TWRR)",
+                         "Meilleure année (TWRR)", "Pire année (TWRR)", "Chute la plus importante (TWRR)", "Sharpe (TWRR, Rf=0)"],
                 index=capital_data.columns
             )
             st.dataframe(stats_df.style.format({
-                "Start Balance (€)": "{:,.0f}",
-                "End Balance (€)": "{:,.0f}",
+                "Capital de départ (€)": "{:,.0f}",
+                "Capital de fin (€)": "{:,.0f}",
                 "CAGR (TWRR)": "{:.2%}",
-                "Volatility (TWRR)": "{:.2%}",
-                "Best Year (TWRR)": "{:.2%}",
-                "Worst Year (TWRR)": "{:.2%}",
-                "Max Drawdown (TWRR)": "{:.2%}",
+                "Volatilité (TWRR)": "{:.2%}",
+                "Meilleure année (TWRR)": "{:.2%}",
+                "Pire année (TWRR)": "{:.2%}",
+                "Chute la plus importante (TWRR)": "{:.2%}",
                 "Sharpe (TWRR, Rf=0)": "{:.2f}",
             }), use_container_width=True)
         else:
