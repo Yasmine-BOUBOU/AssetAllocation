@@ -26,7 +26,7 @@ st.markdown(
 assets = [
     "Actions mondiales (VT)",
     "Private Equity Global (PSP)",
-    "Bitcoin (BTC-USD)",
+    "Bitcoin (Attention, ce n'est pas un ETF)",
     "Actions américaines (SPY)",
     "Immobilier international ex US (IFGL)",
     "Immobilier US (IYR)",
